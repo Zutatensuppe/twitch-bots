@@ -16,3 +16,11 @@ With binary (see [release page](https://github.com/Zutatensuppe/twitch-bots/rele
 ```
 twitch-bots CHANNEL_NAME
 ```
+
+
+# Build
+
+Build for linux and windows (see scripts/build for details):
+```
+./run build
+```
