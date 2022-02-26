@@ -1,0 +1,12 @@
+#!/bin/sh -eu
+
+# build for linux
+cargo build --release
+
+# build for windows
+cargo build --target x86_64-pc-windows-gnu --release
+
+
+mkdir -p dist
+cp target/release/twitch-bots dist/twitch-bots
+cp target/x86_64-pc-windows-gnu/release/twitch-bots.exe dist/twitch-bots.exe
