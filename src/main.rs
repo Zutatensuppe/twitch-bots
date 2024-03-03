@@ -1,7 +1,7 @@
 use reqwest;
-use serde_json::value::Value;
 use serde::{Deserialize, Serialize};
-use std::env;
+use serde_json::value::Value;
+use std::{env, fs};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ResponseData {
@@ -57,7 +57,7 @@ struct ChatViewersResponseItem {
 #[derive(Serialize, Deserialize, Debug)]
 struct ChatViewersRequestDataVariables {
     #[serde(rename = "channelLogin", alias = "channelLogin")]
-    channel_login: String
+    channel_login: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -65,12 +65,11 @@ struct PersistedQuery {
     version: i32,
     #[serde(rename = "sha256Hash", alias = "sha256Hash")]
     sha256_hash: String,
-
 }
 #[derive(Serialize, Deserialize, Debug)]
 struct DataExtensions {
     #[serde(rename = "persistedQuery", alias = "persistedQuery")]
-    persisted_query: PersistedQuery
+    persisted_query: PersistedQuery,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -89,6 +88,8 @@ async fn main() {
         println!("usage: twitch-bots CHANNEL_NAME");
         return;
     }
+
+    let client_id = fs::read_to_string("CLIENT_ID").unwrap();
 
     let twitch_channel = String::from(&args[1]);
     let client = reqwest::Client::new();
@@ -110,30 +111,29 @@ async fn main() {
     }
     // println!("{:?}", bot_names);
 
-
     // ---------------------------------------------------------------
     // Get all currently connected users in chat using twitch gql
     // ---------------------------------------------------------------
 
-    let request_data: Vec<ChatViewersRequestData> = vec![
-        ChatViewersRequestData {
-            operation_name: String::from("ChatViewers"),
-            variables: ChatViewersRequestDataVariables {
-                channel_login: String::from(&twitch_channel),
+    let request_data: Vec<ChatViewersRequestData> = vec![ChatViewersRequestData {
+        operation_name: String::from("ChatViewers"),
+        variables: ChatViewersRequestDataVariables {
+            channel_login: String::from(&twitch_channel),
+        },
+        extensions: DataExtensions {
+            persisted_query: PersistedQuery {
+                version: 1,
+                sha256_hash: String::from(
+                    "e0761ef5444ee3acccee5cfc5b834cbfd7dc220133aa5fbefe1b66120f506250",
+                ),
             },
-            extensions: DataExtensions {
-                persisted_query: PersistedQuery {
-                    version: 1,
-                    sha256_hash: String::from("e0761ef5444ee3acccee5cfc5b834cbfd7dc220133aa5fbefe1b66120f506250"),
-                },
-            },
-        }
-    ];
+        },
+    }];
 
     let data: String = serde_json::to_string(&request_data).unwrap();
     let resp_data = client
         .post("https://gql.twitch.tv/gql#origin=twilight")
-        .header("Client-Id", "kimne78kx3ncx6brgo4mv6wki5h1ko")
+        .header("Client-Id", client_id)
         .body(data)
         .send()
         .await
@@ -160,12 +160,14 @@ async fn main() {
         current_users.push(String::from(&x.login));
     }
 
-
     // ---------------------------------------------------------------
     // Print bot users that are also current chat users
     // ---------------------------------------------------------------
 
     // println!("{:?}", current_users);
-    let bot_users: Vec<String> = current_users.into_iter().filter(|x| bot_names.contains(x)).collect();
+    let bot_users: Vec<String> = current_users
+        .into_iter()
+        .filter(|x| bot_names.contains(x))
+        .collect();
     println!("{}", bot_users.join("\n"));
 }
